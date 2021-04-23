@@ -20,7 +20,7 @@
 
 ## 常用函数
 
-声明一个Person属性
+声明一个Persond对象
 
 ```objective-c
 Person * per = [Person new];
@@ -183,7 +183,7 @@ Person * per = [Person new];
   // param1: 添加对象
   // param2: 属性命
   // param3: 属性内存大小
-  // param4: 属性内存对齐偏移方式 https://www.zhihu.com/question/36590790
+  // param4: 属性内存对齐偏移方式 
   // param5: 属性类型的c字符串 @encode()
   class_addIvar(clazz, "_stuID", sizeof(NSString *), log2(sizeof(NSString *)), @encode(NSString *));
   // 添加成员属性_class
@@ -344,3 +344,6 @@ void canNotFly(id self, SEL sel) {
 }
 ```
 
+## 参考
+
+[内存偏移](https://www.zhihu.com/question/36590790)

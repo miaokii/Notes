@@ -99,5 +99,7 @@ Thread.exit()
 
 ### 线程安全方案
 
-给存在数据竞争的操作加锁，不允许其他线程进行操作。加锁的方式有多种：@synchronized、 NSLock、NSRecursiveLock、NSCondition、NSConditionLock、pthread_mutex、dispatch_semaphore、OSSpinLock、atomic(property)
+给存在数据竞争的操作加锁，不允许其他线程进行操作。加锁的方式有多种：objc_sync_enter/objc_sync_exit、 NSLock、NSCondition、NSConditionLock、DispatchSemaphore等
+
+
 
