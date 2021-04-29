@@ -388,6 +388,22 @@ subject.onCompleted()
 publish subject complete
 ```
 
+### BehaviorRelay
+
+**BehaviorRelay**是对**BehaviorSubject**的包装，不同在于BehaviorRelay不会发送错误和完成事件
+
+```swift
+let subject = BehaviorRelay<String>.init(value: "😄")
+subject
+    .subscribe(onNext: {
+        print($0)
+    })
+    .disposed(by: bag)
+subject.accept("😊")
+subject.accept("😭")
+subject.accept("😂")
+```
+
 ## Schedulers
 
 **Schedulers**是Rx实现多线程核心，主要控制任务在那个线程或队列运行。比如数据请求放在后台线程执行，显示请求结果放在主线程执行
