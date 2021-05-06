@@ -17,6 +17,72 @@ Observable<Int>.create { (observer) -> Disposable in
 .disposed(by: bag)
 ```
 
+## 合并
+
+### merge
+
+将多个序列合并，当其中一个序列发出一个元素时，merge后的序列也发出这个元素，如果其中一个序列发出error事件，merge后的序列也发出error事件并终止序列
+
+```swift
+let streamA = PublishSubject<String>()
+let streamB = PublishSubject<String>()
+
+Observable.of(streamA, streamB)
+    .merge()
+    .subscribe(onNext: {print($0)})
+    .disposed(by: bag)
+
+streamA.onNext("🍻")
+streamA.onNext("🍺")
+streamB.onNext("👋")
+streamA.onNext("🐷")
+streamB.onError(RxError.noElements)
+// streamB发出了错误，merge序列已经终止
+streamA.onNext("🐱")
+
+//
+🍻
+🍺
+👋
+🐷
+Unhandled error happened: Sequence doesn't contain any elements.
+```
+
+### startWith
+
+在序列的头部插入元素
+
+```swift
+Observable.of("一", "二", "三", "四")
+    .startWith("〇")
+    .subscribe(onNext: { print($0) })
+    .disposed(by: bag)
+// 〇 一 二 三 四
+```
+
+### concat
+
+将多个序列按顺序串联，当前一个序列元素执行完毕后，后一个序列开始发送元素，后一个序列必须要等前一个序列发送了完成事件，才能开始。当顺序中的一个序列发出错误事件，整个序列终止
+
+```swift
+let streamA = PublishSubject<String>()
+let streamB = PublishSubject<String>()
+
+Observable.concat([streamA, streamB])
+    .subscribe(onNext: { print($0) })
+    .disposed(by: bag)
+
+streamA.onNext("1")
+streamA.onNext("2")
+streamB.onNext("A")
+streamA.onCompleted()
+// streamA.onError(RxError.noElements)
+streamB.onNext("B")
+
+// 1 2 B
+// streamA发出错误 1 2 Unhandled error happened: Sequence doesn't contain any elements.
+```
+
 
 
 

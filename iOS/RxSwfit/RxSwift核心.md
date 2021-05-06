@@ -264,7 +264,7 @@ observable
 
 没有任何元素，只有一个完成事件，**AsyncSubject**也只有一个完成事件，如果源序列产生一个`error`
 
-事件而终止，**AsyncSubject**不会发出任何事件，而是发出`error`事件后终止
+事件而终止，**AsyncSubject**也发出`error`事件后终止
 
 ```swift
 // 只会发出完成事件之前的最后一个元素
@@ -323,7 +323,7 @@ anyObserverError
 
 ### ReplaySubject
 
-**ReplaySubject**可以将所有元素（buffersize指定数量）发送给观察者，不论观察者合适进行订阅
+**ReplaySubject**可以将所有元素（buffersize指定数量）发送给观察者，不论观察者何时进行订阅
 
 ```swift
 // buffersize指定添加观察之前添加监听的元素数量
@@ -350,7 +350,6 @@ subject.onNext("🐎")
 subject.onCompleted()
 
 // 结果
-🐷
 🐂
 🐑
 🐎
@@ -408,12 +407,12 @@ subject.accept("😂")
 
 **Schedulers**是Rx实现多线程核心，主要控制任务在那个线程或队列运行。比如数据请求放在后台线程执行，显示请求结果放在主线程执行
 
-- `subscribeOn`：决定序列数据的构建在那个Scheduler上执行
-- `observeOn`：决定序列在那个Scheduler上监听
-- `MainScheduler`：主线程
-- `SerialDispatchQueueScheduler`：串行队列
-- `ConcurrentDispatchQueueScheduler`：并行队列
-- `OperationQueueScheduler`：OperationQueue的抽象，可以设置最大并发数maxConcurrentOperationCount
+- **subscribeOn**：决定序列数据的构建在那个Scheduler上执行
+- **observeOn**：决定序列在那个Scheduler上监听
+- **MainScheduler**：主线程
+- **SerialDispatchQueueScheduler**：串行队列
+- **ConcurrentDispatchQueueScheduler**：并行队列
+- **OperationQueueScheduler**：OperationQueue的抽象，可以设置最大并发数maxConcurrentOperationCount
 
 ```swift
 // 全局队列读取数据，主线程使用数据
