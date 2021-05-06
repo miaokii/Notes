@@ -17,7 +17,36 @@ Observable<Int>.create { (observer) -> Disposable in
 .disposed(by: bag)
 ```
 
+### interval
+
+创建一个序列，每隔一段时间，发出一个索引数
+
+```swift
+Observable<Int>.interval(.seconds(1), scheduler: MainScheduler.instance)
+    .subscribe(onNext: { print($0) })
+    .disposed(by: bag)
+```
+
 ## 合并
+
+### combineLatest
+
+多个序列中的任意一个序列发出一个元素，合并后的序列也发出一个元素，这个元素由原多个序列中每个序列中最新的元素通过函数组合而成
+
+```swift
+let streamA = PublishSubject<String>()
+let streamB = PublishSubject<String>()
+Observable.combineLatest(streamA, streamB) { $0+$1 }
+    .subscribe(onNext: { print($0) })
+    .disposed(by: bag)
+Observable<Int>.interval(.seconds(2), scheduler: MainScheduler.instance)
+    .subscribe(onNext: { streamA.onNext(.init(format: "%c", $0+65)) })
+    .disposed(by: bag)
+Observable<Int>.interval(.seconds(1), scheduler: MainScheduler.instance)
+    .subscribe(onNext: { streamB.onNext($0.description) })
+    .disposed(by: bag)
+// A0 A1 A2 B2 B3 B4 C4
+```
 
 ### merge
 
