@@ -17,6 +17,35 @@ Observable<Int>.create { (observer) -> Disposable in
 .disposed(by: bag)
 ```
 
+### just
+
+创建一个序列只发出一个元素就结束，可以将某个元素转换为特定的序列
+
+```swift
+Observable.just("😊")
+    .subscribe(onNext: { print($0) },
+               onCompleted: { print("complete") })
+    .disposed(by: bag)
+```
+
+
+
+### deferred
+
+直到订阅发生时，才创建序列，并且当有多个订阅者是，为每个订阅者创建新的序列
+
+```swift
+let observable = Observable<Int>.deferred { Observable.interval(.seconds(1),
+scheduler: MainScheduler.instance)
+}
+observable.subscribe(onNext:{ print($0) })
+    .disposed(by: bag)
+observable.subscribe(onNext: { print("1-\($0.description)") })
+    .disposed(by: bag)
+```
+
+
+
 ### interval
 
 创建一个序列，每隔一段时间，发出一个索引数
