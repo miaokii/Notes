@@ -256,7 +256,7 @@ observable
 
 有的序列既可以是可监听序列**Observable**可以是观察者**Observer**，比如`UITextField`的`text`属性、`UISwitch`开关状态、`segmentedControl`的选中索引号及`datePicker`的选中日期等。
 
-还有一些辅助类型，即时可监听序列也是观察者
+还有一些辅助类型，既是可监听序列也是观察者
 
 ### AsyncSubject
 
