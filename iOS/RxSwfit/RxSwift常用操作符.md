@@ -292,3 +292,34 @@ Observable.of(1, 2, 3, 4)
 // 1 2
 ```
 
+## 连接
+
+### share(replay: scope:)
+
+共享序列，并缓存最新的n个元素，当新的观察者订阅序列时，发送缓存的元素给新的观察者
+
+```swift
+let stream = Observable<Int>.interval(.seconds(1), scheduler:
+MainScheduler.instance)
+    .share(replay: 2, scope: .forever)
+stream
+    .subscribe(onNext: { print("Subscribe1：\($0)") })
+    .disposed(by: bag)
+DispatchQueue.main.asyncAfter(deadline: .now()+3) {
+    stream
+        .subscribe(onNext: { print("Subscribe2：\($0)") })
+        .disposed(by: self.bag)
+}
+
+// 
+Subscribe1：0
+Subscribe1：1
+Subscribe1：2
+Subscribe2：1
+Subscribe2：2
+Subscribe1：3
+Subscribe2：3
+Subscribe1：4
+Subscribe2：4
+```
+
