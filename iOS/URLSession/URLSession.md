@@ -51,28 +51,77 @@ let config3 = URLSessionConfiguration.background(withIdentifier: "download.sessi
 #### 基础配置
 
 - identifier：唯一标识
+
+```swift
+var identifier: String?
+```
+
 - httpAdditionalHeaders：会话任务的请求头
+
+```swift
+var httpAdditionalHeaders: [AnyHashable : Any]?
+```
+
 - networkServiceType：网络服务类型，用于向系统提供流量用途提示，该提示决定系统使用流量的决策，是否使用蜂窝网络还是wifi网络等，以节省流量，平衡性能。例如当进行下载任务时，指定网络类型为**background**，默认值为**default**
+
+```swift
+var networkServiceType: NSURLRequest.NetworkServiceType
+```
+
 - allowsCellularAccess：是否允许使用蜂窝网路
+
 - timeoutIntervalForRequest：设置session请求间的超时时间，这个超时时间并不是请求从开始到结束的时间，而是两个数据包之间的时间间隔。当任意请求返回后这个值将会被重置，如果在超时时间内未返回则超时。单位为秒，默认为60秒
 - timeoutIntervalForResource：请求资源等待的最长时间，在上传和下载任务中，如果该时间内任务没有结束，就放弃之前传输的内容，单位为秒，默认7天
+- sharedContainerIdentifier: 后台URL会话中的文件应下载到的共享容器的标识符
 
 #### cookie策略
 
 - httpCookieAcceptPolicy：何时接受cookie
+
+```swift
+var httpCookieAcceptPolicy: HTTPCookie.AcceptPolicy
+```
+
 - httpShouldSetCookies：确定请求是否应包含来自cookie存储区的cookie
 - httpCookieStorage：cookie存储区，用于在会话中存储cookie，要禁用cookie存储设置为nil。对于默认会话和后台会话，默认值为共享cookie存储对象。对于临时会话，默认值为私有cookie存储对象，该对象仅将数据存储在内存中，并且在使会话无效时会被销毁
+
+```swift
+var httpCookieStorage: HTTPCookieStorage?
+```
 
 #### 安全策略
 
 - tlsMinimumSupportedProtocolVersion：会话建立连接时应接受的最低TLS协议版本
+
+```swift
+var tlsMinimumSupportedProtocolVersion: tls_protocol_version_t
+```
+
 - tlsMaximumSupportedProtocolVersion：会话建立连接时应接受的最高TLS协议版本
+
+```swift
+var tlsMaximumSupportedProtocolVersion: tls_protocol_version_t
+```
+
 - urlCredentialStorage：提供用于身份验证的凭据的凭据存储，不使用凭据存储设置为nil。对于默认会话和后台会话，默认值为共享凭据存储对象。对于临时会话，默认值是一个专用凭据存储对象，该对象仅将数据存储在内存中，并且在使会话无效时会被销毁
+
+```swift
+var urlCredentialStorage: URLCredentialStorage?
+```
 
 #### 缓存策略
 
 - urlCache：为会话中的请求提供缓存的响应，禁用缓存设置为nil。对于默认会话，默认值为共享URL缓存对象。对于后台会话，默认值为nil。对于临时会话，默认值是专用缓存对象，该对象仅将数据存储在内存中，并且在使会话无效时会被销毁
+
+```swift
+var urlCache: URLCache?
+```
+
 - requestCachePolicy：会话中的任务使用的请求缓存策略
+
+```swift
+var requestCachePolicy: NSURLRequest.CachePolicy
+```
 
 #### 后台传输
 
@@ -83,6 +132,10 @@ let config3 = URLSessionConfiguration.background(withIdentifier: "download.sessi
 #### 多路径TCP
 
 - multipathServiceType：指定用于通过Wi-Fi和蜂窝网络传输数据的多路径TCP连接策略
+
+```swift
+var multipathServiceType: URLSessionConfiguration.MultipathServiceType
+```
 
 #### HTTP策略与代理
 
@@ -136,6 +189,46 @@ let session = URLSession.init(configuration: sessionConfiguration, delegate: sel
 
 - delegate：通知代理对象会话的生命周期，处理身份验证
 - delegateQueue：回调队列用于调度委托调用和完成处理程序的操作队列，该队列应该是一个串行队列，以确保回调的正确顺序，如果为nil，则会话将创建一个串行操作队列
+
+### 管理会话
+
+- 结束所有未完成的任务并使会话失效
+
+```swift
+func finishTasksAndInvalidate()
+```
+
+- 将cookie和凭据保存到磁盘，清除临时缓存，并确保将来的请求在新的TCP连接上发生
+
+```swift
+func flush(completionHandler: () -> Void)
+```
+
+- 异步调用会话中的所有数据，上载和下载任务的完成回调
+
+```swift
+func getTasksWithCompletionHandler(([URLSessionDataTask], [URLSessionUploadTask], [URLSessionDownloadTask]) -> Void)
+```
+
+- 异步调用会话中所有任务的完成回调
+
+```swift
+func getAllTasks(completionHandler: ([URLSessionTask]) -> Void)
+```
+
+- 取消所有未完成的任务，并使会话失效
+
+```swift
+func invalidateAndCancel()
+```
+
+- 清空所有cookie，缓存和凭据存储，删除磁盘文件，将正在进行的下载存储到磁盘，并确保将来的请求在新的socket上发生
+
+```swift
+func reset(completionHandler: () -> Void)
+```
+
+- sessionDescription：会话描述
 
 ### URLSessionDelegate
 
@@ -228,4 +321,51 @@ URLSessionTask是所有任务的父类，其中定义了操作任务的基本方
 
 任务之间的继承结构如下：
 
-![tasks.png](../../assets/urlsession/tasks.png)
+![tasks.png](../../Assets/urlsession/tasks.png)
+
+### 方法和属性
+
+#### 状态控制
+
+- cancel：取消任务方法
+- resume：如果任务被挂起，继续执行任务
+- suspend：挂起任务
+- state：任务状态，活动，暂停，正在取消或完成的过程
+
+```swift
+var state: URLSessionTask.State
+```
+
+#### 任务进度
+
+- priority：优先级，0-1，该属性不代表请求的优先级，而是一个标示
+- var progress：总体任务进度
+- countOfBytesExpectedToReceive：任务总的接收字节数
+- countOfBytesReceived：任务已经接收的字节数
+- countOfBytesExpectedToSend：任务总的发送的总字节数
+- countOfBytesSent: 任务已经发送的字节数
+- NSURLSessionTransferSizeUnknown：无法确定传输的总大小
+
+#### 任务信息
+
+- currentRequest：任务当前正在处理的请求对象，发生重定向时，表示重定向后的请求对象
+
+```swift
+var currentRequest：URLRequest？
+```
+
+- originalRequest：原始请求对象
+
+```swift
+var originalRequest：URLRequest？
+```
+
+- response：服务器对当前任务请求的响应
+
+```swift
+var response: URLResponse?
+```
+
+- taskDescription：任务描述
+- taskIdentifier：唯一标识
+- error：任务失败的原因
