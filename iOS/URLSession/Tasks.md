@@ -40,7 +40,7 @@ func urlSession(URLSession, dataTask: URLSessionDataTask, didReceive: Data)
 func urlSession(URLSession, dataTask: URLSessionDataTask, willCacheResponse: CachedURLResponse, completionHandler: (CachedURLResponse?) -> Void)
 ```
 
-### 使用
+### GET请求
 
 创建会话任务时，允许使用闭包来接收会话数据，此时如果设置了代理，将不会执行代理回调，因为闭包的优先级更高，但是在闭包中无法控制请求过程，比如请求转换
 
@@ -82,7 +82,9 @@ func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithErro
 }
 ```
 
-使用URLRequest创建任务，可以指定请求方法，默认时`GET`请求
+### POST请求
+
+使用URLRequest创建任务，可以指定请求方法，默认是`GET`请求，`POST`请求如下
 
 ```swift
 let session = URLSession.shared
@@ -100,4 +102,20 @@ let postTask = session.dataTask(with: request) { data, response, error in
 }
 postTask.resume()
 ```
+
+## URLSessionUploadTask
+
+上传任务，是URLSessionDataTask的子类，用于向服务器上传文件或数据。创建上传任务时，需提供一个URLRequest实例，其中包含可能需要在上传时发送的标头，例如内容类型`Content-Type`，内容处理等。当在后台会话中为文件创建上传任务时，系统会将文件复制到临时存储区并从那里获取流数据。在上传过程中，任务会定期回调代理的`urlSession(_:task:didSendBodyData:totalBytesSent:totalBytesExpectedToSend:)`方法提供任务的状态信息
+
+文件上传有两种形式，表单上传和后台文件上传。表单上传会直接在内存中读取上传数据，当上传内容很大时，可能会耗尽内存。文件上传专门为较大的数据集设计，它使用适当的分段模式从文件中读取数据，分段上传，例如上传视频内容时
+
+#### 表单上传
+
+表单形式上传对请求头、请求体有一些特殊要求
+
+```swift
+header = ["Content-Type": "multipart/form-data; charset=utf-8; boundary=customboundary"] 
+```
+
+**multipart/form-data**表示使用表单上传，**charset=utf-8**表示二进制数据的编码格式，**boundary**表示上传内容的分割符，用于分割请求体，接收方根据该字段解析和还原上传的数据
 

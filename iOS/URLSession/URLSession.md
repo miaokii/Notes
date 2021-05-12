@@ -331,6 +331,10 @@ URLSessionTask是所有任务的父类，其中定义了操作任务的基本方
 - resume：如果任务被挂起，继续执行任务
 - suspend：挂起任务
 - state：任务状态，活动，暂停，正在取消或完成的过程
+  - running：任务正在进行
+  - suspended：任务暂停
+  - canceling：任务取消
+  - completed：任务已经完成
 
 ```swift
 var state: URLSessionTask.State
@@ -339,7 +343,7 @@ var state: URLSessionTask.State
 #### 任务进度
 
 - priority：优先级，0-1，该属性不代表请求的优先级，而是一个标示
-- var progress：总体任务进度
+- progress：总体任务进度
 - countOfBytesExpectedToReceive：任务总的接收字节数
 - countOfBytesReceived：任务已经接收的字节数
 - countOfBytesExpectedToSend：任务总的发送的总字节数
