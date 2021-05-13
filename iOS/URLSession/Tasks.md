@@ -117,5 +117,5 @@ postTask.resume()
 header = ["Content-Type": "multipart/form-data; charset=utf-8; boundary=customboundary"] 
 ```
 
-**multipart/form-data**表示使用表单上传，**charset=utf-8**表示二进制数据的编码格式，**boundary**表示上传内容的分割符，用于分割请求体，接收方根据该字段解析和还原上传的数据
+**multipart/form-data**表示使用表单上传，**charset=utf-8**表示二进制数据的编码格式，**boundary**表示上传内容的分割符，用于分割请求体，区分不同的参数部分，接收方根据该字段解析和还原上传的数据
 
