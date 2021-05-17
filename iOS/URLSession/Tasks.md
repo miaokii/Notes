@@ -109,7 +109,7 @@ postTask.resume()
 
 文件上传有两种形式，表单上传和后台文件上传。表单上传会直接在内存中读取上传数据，当上传内容很大时，可能会耗尽内存。文件上传专门为较大的数据集设计，它使用适当的分段模式从文件中读取数据，分段上传，例如上传视频内容时
 
-#### 表单上传
+### 表单上传
 
 表单形式上传对请求头、请求体有一些特殊要求
 
@@ -226,7 +226,174 @@ func buildHeadImage(data: Data, param: [String: Any]) -> Data {
 }
 ```
 
-#### 文件上传
+### 文件上传
 
 对于大文件的上传，一次性读入内存可能造成内存耗尽，所以不适合使用表单格式。一种处理方法是将大文件切割成若干个小文件，逐个上传。当使用文件形式上传，如果需要监听上传进度或使用后台上传的功能，就不能使用共享的会话，自定义会话实现会话协议来监听进度是最合适的选择
+
+## URLSessionDownloadTask
+
+下载任务，允许断点续传和后台下载，在后台下载中，系统会为下载请求创建独立的进程来执行任务，所以当app挂起时仍然可以继续下载
+
+当需要监听下载任务的下载进度时，需要对会话`session`设置`URLSessionDownloadDelegate`代理，其中定义了下载进度、恢复下载信息和下载成功的信息，如下：
+
+- 下载任务结束，此时文件被下载到临时目录，需要将下载的文件移动到自己的目录
+
+```swift
+func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL)
+```
+
+- 任务进度
+  - bytesWritten：上次该回调到这次该回调之间写入文件的字节数
+  - totalBytesWritten：任务总写入文件的字节数
+  - totalBytesExpectedToWrite：任务总字节数
+
+```swift
+func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didWriteData bytesWritten: Int64, totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64)
+```
+
+- 恢复下载
+  - fileOffset：已经下载的字节数
+  - expectedTotalBytes：任务总字节数
+
+```swift
+func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didResumeAtOffset fileOffset: Int64, expectedTotalBytes: Int64)
+```
+
+### 普通下载
+
+监听下载进度必须自定义一个`session`，实现`URLSessionDownloadDelegate`代理
+
+```swift
+session = URLSession.init(configuration: defaultConfig, delegate: self, delegateQueue: nil)
+
+let url = URL.init(string: downloadPath)!
+var downloadTask = session.downloadTask(with: request)
+downloadTask.resume()
+```
+
+监听进度与保存下载文件
+
+```swift
+func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask,
+didFinishDownloadingTo location: URL) {
+    print("下载成功：\(location.absoluteString)")
+    let videoName = String.decimal(value: Date().timeIntervalSince1970, style:
+.none)+".mp4"
+    let videoPath = SandBoxManager.multipartFilePath()+"/\(videoName)"
+    SandBoxManager.copyDownloadItem(from: location.path, to: videoPath)
+}
+
+/// 下载进度
+func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didWriteData
+bytesWritten: Int64, totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64) {
+    let totalBytesWrittenPercent = 
+Double(totalBytesWritten)/Double(totalBytesExpectedToWrite)
+    let percentDescription = "下载进度：\(String.decimal(value: totalBytesWrittenPercent,
+style: .percent))"
+    print(percentDescription)
+}
+```
+
+### 断点续传
+
+断点续传时，请求头中的Range字段，标示了传输开始的位置，请求开始时，通过Content-Range告知客户端传输起始时的位置
+
+```c
+// 恢复任务时的请求头
+// po downloadTask.currentRequest?.allHTTPHeaderFields
+key : "Range"
+value : "bytes=58082207-"
+
+// 任务已经恢复时
+// po downloadTask.response
+"content-range" =     (
+  "bytes 58082207-209413183/209413184"
+);
+```
+
+使用cancelByProducingResumeData:方法可以取消请求，并在闭包中返回要恢复任务时的数据，可以将该数据写入本地
+
+```swift
+downloadTask.cancel { data in
+    guard let data = data else {
+        return
+    }
+    SandBoxManager.write(data: data, to: self.resumePath)
+}
+```
+
+当再次启动任务时，检查有无恢复数据，从而恢复任务
+
+> 通过`suspend`和`resume`这种方式挂起的任务，`downloadTask`是同一个对象
+>
+> 通过`cancel`然后`resumeData`恢复的任务，会创建一个新的`downloadTask`任务
+
+```swift
+if let resume = resumeData {
+    downloadTask = session.downloadTask(withResumeData: resume)
+} else {
+    downloadTask = session.downloadTask(with: request)
+}
+```
+
+继续开始任务时，URLSessionDownloadDelegate会回调已经恢复任务的方法，随后继续回调正常的下载进度方法，直到任务结束
+
+```swift
+func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask,
+didResumeAtOffset fileOffset: Int64, expectedTotalBytes: Int64) {
+    print("任务已恢复")
+    let percent = Double(fileOffset)/Double(expectedTotalBytes)
+    print("已经下载：\(String.decimal(value: percent, style: .percent))")
+}
+```
+
+需要注意的是，当任务结束时，清空暂存的恢复任务信息，房子下次下载是继续从上次断点的位置开始
+
+```swift
+func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask,
+didFinishDownloadingTo location: URL) {
+  	// ...
+    SandBoxManager.delete(filePath: URL.init(fileURLWithPath: resumePath))
+    resumeData = nil
+}
+```
+
+### 后台下载
+
+创建一个支持后台下载类型的会话配置对象，来初始化会话，这个会话就支持后台下载
+
+```swift
+var backgroundConfig = URLSessionConfiguration.background(withIdentifier: backgroundSessionId)
+// 指示传输完成后应在后台恢复还是启动该应用，如果此属性的值为true，则当会话的任务完成或需要身份验证时，系统会在后台自动唤醒或启动应用
+backgroundConfig.sessionSendsLaunchEvents = true
+// 系统可以等待最佳条件来执行传输，例如等待wifi连接才继续
+backgroundConfig.isDiscretionary = true
+
+let backgroundSession = URLSession.init(configuration: backgroundConfig, delegate: self, delegateQueue: nil)
+```
+
+通过该方法创建的会话，系统会在单独的进程中执行任务，当任务执行过程中被杀掉，下次启动时，使用相同的标识符创建URLSessionConfiguration，再创建会话，系统会将新的会话和旧的会话重新关联，并继续执行下载任务
+
+如果应用在后台下载任务完成，会通过AppDelegate的回调方法通知应用
+
+```swift
+func application(_ application: UIApplication, handleEventsForBackgroundURLSession identifier:
+String, completionHandler: @escaping () -> Void) {
+    if identifier == backgroundSessionId {
+        backgroundSessionComplete = completionHandler
+    }
+}
+```
+
+之后调用NSURLSessionDelegate通过下面回调告诉代理，所有的传输都已经完成，此时执行上面方法的completionHandler完成回调告诉系统整个流程已经完成
+
+```swift
+func urlSessionDidFinishEvents(forBackgroundURLSession session: URLSession) {
+    if let appDelegate = UIApplication.shared.delegate as? AppDelegate,
+       let complete = appDelegate.backgroundSessionComplete {
+        appDelegate.backgroundSessionComplete = nil
+        complete()
+    }
+}
+```
 
