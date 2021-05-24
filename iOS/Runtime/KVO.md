@@ -96,7 +96,7 @@ self.kvoPerson.age = 11;
 
 ## 原理
 
-KVO通过isa-swizzling实现，当对属性添加了观察后，Runtime会创建一个继承自原类的中间类，将对象的isa指向这个中间类，并将中间类的class方法重写，返回原类的class。当修改对象的属性时，会调用Foundaton框架的_NSSetXXXVlaueAndNotify函数，该函数会先调用willChangeValueForKey:方法，然后调用原来的setter方法修改值，最后调用didChangeValueForKey:方法，并触发监听器Oberser的回调方法observeValueForKeyPath:ofObject:change: context:通知监听者属性改变，并返回改变信息。
+KVO通过isa-swizzling实现，当对属性添加了观察后，Runtime会创建一个继承自原类的中间类，将对象的isa指向这个中间类，并将中间类的class方法重写，返回原类的class。当修改对象的属性时，会调用Foundaton框架的_NSSetXXXValueAndNotify函数，该函数会先调用willChangeValueForKey:方法，然后调用原来的setter方法修改值，最后调用didChangeValueForKey:方法，并触发监听器Oberser的回调方法observeValueForKeyPath:ofObject:change: context:通知监听者属性改变，并返回改变信息。
 
 ### 验证
 

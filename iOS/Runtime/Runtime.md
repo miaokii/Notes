@@ -48,7 +48,7 @@ objc_msgSend(receiver, selector, arg1, arg2, ...)
 
 ​	下图是对象之间isa的关系以及类的继承关系
 
-![isa](../Assets/runtime/isa.png)
+![isa](../../Assets/runtime/isa.png)
 
 ​	从Runtime的源码可以看出，每个对象都是一个`objc_object`结构体，**在结构体中有一个isa指针指向自己所属的类，由Runtime负责创建对象**
 
@@ -405,7 +405,8 @@ public:
 // ISA_BITFIELD定义，仅在arm64环境下
 # if __arm64__
 # define ISA_BITFIELD                                                      \
-    // 32未还是64位
+    // 0 标识普通指针，存储了class metaclass对象的地址
+		// 1 代表优化过，使用位域存储更多信息
     uintptr_t nonpointer        : 1;                                       \
     // 对象是否有或曾有关联引用，没有关联引用可以更快的释放
     uintptr_t has_assoc         : 1;                                       \
@@ -416,8 +417,9 @@ public:
     // 对象是否初始化完成
     uintptr_t magic             : 6;                                       \
     // 是否被若引用或被弱引用过
-    uintptr_t weakly_referenced : 1;                                       \          
-    uintptr_t unused            : 1;                                       \
+    uintptr_t weakly_referenced : 1;                                       \         
+    // 正在释放
+    uintptr_t deallocating      : 1;                                       \
     // 对象引用计数太大，是否超出存储区域
     uintptr_t has_sidetable_rc  : 1;                                       \
     // 对象引用计数
@@ -431,7 +433,7 @@ public:
 
 ​	下图是`isa_t`初始化后的内存布局，以及各个结构体成员在`isa_t`中的位置
 
-<img src="../Assets/runtime/isa_t.png" alt="isa_t" style="zoom: 20%;" />
+<img src="../../Assets/runtime/isa_t.png" alt="isa_t" style="zoom: 20%;" />
 
 ​	查看初始化isa_t的源码
 
@@ -633,7 +635,7 @@ struct class_ro_t {
 
 在`obc_class`的`setData()`方法下断点来跟踪类初始化时的调用顺序，观察堆栈信息
 
-<img src="../Assets/runtime/setData.png" alt="setData" style="zoom: 50%;" />
+<img src="../../Assets/runtime/setData.png" alt="setData" style="zoom: 50%;" />
 
 ​	通过断点和堆栈调用顺序得出在`realizeClassWithoutSwift`方法中完成类的初始化，查看其精简源码
 
@@ -739,13 +741,13 @@ static void methodizeClass(Class cls, Class previously)
 
 ​	声明一个类`MKObject`继承自`NSObject`，添加一个`testMethod`方法，打印编译后的`class_ro_t`结构体
 
-<img src="../Assets/runtime/class_ro_t.png" alt="class_ro_t" style="zoom: 50%;" />
+<img src="../../Assets/runtime/class_ro_t.png" alt="class_ro_t" style="zoom: 50%;" />
 
 ​	打印可以看出，class_ro_t只会包含当前类的信息，不包含父类信息
 
 ### 关系图
 
-<img src="../Assets/runtime/runtime 结构.png" alt="runtime 结构" style="zoom: 50%;" />
+<img src="../../Assets/runtime/runtime 结构.png" alt="runtime 结构" style="zoom: 50%;" />
 
 ### TaggedPointer
 
@@ -1581,7 +1583,7 @@ void objc_registerProtocol(Protocol *proto_gen) {
 typedef struct objc_selector *SEL;
 ```
 
-​	在源码中虽然`SEL`定义为一个`objc_selector`类型的结构题指针，实际上它是一个常量字符串。在`_read_images`的`SEL list`视线中，主要逻辑是加载`SEL list`到内存中，然后通过`sel_registerNameNoLock`函数，将所有`SEL`都注册到术语`SEL`的哈希表中	
+​	在源码中虽然`SEL`定义为一个`objc_selector`类型的结构题指针，实际上它是一个常量字符串。在`_read_images`的`SEL list`实现中，主要逻辑是加载`SEL list`到内存中，然后通过`sel_registerNameNoLock`函数，将所有`SEL`都注册到术语`SEL`的哈希表中	
 
 ```c
 // 将所有SEL都注册到SEL哈希表中
@@ -1622,11 +1624,11 @@ SEL sel_registerNameNoLock(const char *name, bool copy) {
 
 在类的`load`方法里面下断点，追踪`load`方法的调用流程
 
-![load.jpg](../Assets/runtime/load.jpg)
+![load.jpg](../../Assets/runtime/load.jpg)
 
 可以看到`load`调用由`load_images`发起，继续下断点
 
-![objc_init.jpg](../Assets/runtime/objc_init.jpg)
+![objc_init.jpg](../../Assets/runtime/objc_init.jpg)
 
 观察到`load_images`由`_objc_init`调起，而程序的最开始由`_dyld_start`开始
 
