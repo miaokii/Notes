@@ -69,3 +69,122 @@ RunLoop定义在Foundation框架，CFRunLoop定义在CoreFoundation框架，是�
 
 CoreFundation是开源的，所以可以分析[源码](https://opensource.apple.com/source/CF/CF-855.17/CFRunLoop.c.auto.html)
 
+## Run Loop Modes
+
+运行循环模式是要监视的输入源和计时器的集合，以及要通知的运行循环观察者集合。每次RunLoop循环中，可以设置特定的模式，设置后RunLoop循环中，只监听与该模式相关联的源，并允许其传递事件给线程，如果设置了监听，观察者也只监听与该模式相关的的RunLoop进度。此时其他模式的源发出新事件将会被保留，直到之后以适当的模式来处理事件。设置循环模式可以通过Fundation或CoreFoundation框架`RunLoop.Mode`和`CFRunLoopMode`来指定，本质上模式都是用字符串来定义的
+
+运行模式可以从运行循环中过滤掉不需要的源事件，多数情况下，循环模式是`default`类型。`modal`模式用于处理模态面板（MacOS程序的关于视图等）事件，此种模式下，只有模态面板的事件会传给线程
+
+下表列举所有的循环模式：
+
+| Mode           | Name                                                         | Description                                                  |
+| :------------- | :----------------------------------------------------------- | :----------------------------------------------------------- |
+| Default        | `RunLoop.Mode.default` (Cocoa)<br />`kCFRunLoopDefaultMode` (CF) | 用的最多的模式，使用该模式开始运行循环并配置数据源           |
+| Connection     | `NSConnectionReplyMode` (Cocoa)                              | Cocoa框架用该模式监听NSConnection对象回调，开发几乎不使用    |
+| Modal          | `RunLoop.Mode.modalPanel` (Cocoa)                            | 标识模态面板事件                                             |
+| Event tracking | `RunLoop.Mode.eventTracking` (Cocoa)                         | 用于跟踪事件，如鼠标滑动，屏幕滑动                           |
+| Common modes   | `RunLoop.Mode.common` (Cocoa)<br />`kCFRunLoopCommonModes` (Core Foundation) | 最常用的模式，是default、modal和eventTracking模式的集合，可以处理大部分的事件 |
+
+## Input Sources
+
+输入源将事件异步传递到线程，不同的输入源会产生不同的事件，通常有两个类别：
+
+- 基于端口的输入源监听程序的Mach端口
+- 自定义输入源监听事件的自定义源
+
+在运行循环中，输入源不区分基于端口还是基于自定义。系统通常实现两种类型的输入源，区别在于他们信号的发送方式。基于端口的源由内核自动发出信号，自定义的源必须从另一个线程手动发出信号
+
+以下列举了系统定义的几种源
+
+### Port-Based Sources
+
+基于端口相关功能的输入源。在Cocoa中，不需要直接创建输入源，只要创建一个端口对象，将端口对象添加到RunLoop中即可。在CoreFoundation中，需手动创建端口及输入源，使用`CFMachPortRef`，`CFMessagePortRef`或`CFSocketRef`来创建适当的对象
+
+### Custom Input Sources
+
+自定义输入源，使用CoreFoundation框架下CFRunLoopSourceRef类型来创建。可以使用多个回调函数配置自自定义输入源。当要从RunLoop中删除源时，CoreFoundation会在不同点调用这些函数以配置源，处理所有传入事件，最后移除源
+
+除了定义事件到达时自定义源的行为外，还必须定义事件传递机制。这部分的代码需在单独的线程上运行，负责为输入源提供其数据，并在准备好处理数据时向其发出信号
+
+### Cocoa Perform Selector Sources
+
+在Cocoa中，NSObject类定义了一个自定义的输入源，该源允许再任何线程上执行一个方法，在线程间通信时，这种方法减轻了在一个线程上运行多种方法时的同步问题
+
+执行方法选择器源在执行了方法后，就将自身从RunLoop中删除
+
+在另一个线程上执行方法选择器时，目标线程必须有正在运行的RunLoop。如果目标线程时手动创建的线程，就需要手动启动该线程的RunLoop
+
+下面列举了NSObject中定义的在其他线程执行任务的方法：
+
+- 在当前线程的下一个RunLoop循环中，在程序的主线程执行指定方法
+
+  > 这两个方法可以阻塞当前线程，直到执行指定方法为止
+
+```swift
+func performSelector(onMainThread aSelector: Selector, with arg: Any?, waitUntilDone wait: Bool, modes array: [String]?)
+
+func performSelector(onMainThread aSelector: Selector, with arg: Any?, waitUntilDone wait: Bool)
+```
+
+- 在指定线程上执行指定方法
+
+  > 这两个方法可以阻塞当前线程，直到执行指定方法为止
+
+```swift
+func perform(_ aSelector: Selector, on thr: Thread, with arg: Any?, waitUntilDone wait: Bool)
+
+func perform(_ aSelector: Selector, on thr: Thread, with arg: Any?, waitUntilDone wait: Bool, modes array: [String]?)
+```
+
+- 在当前线程的下一个RunLoop循环中，可以延迟执行指定方法
+
+  > 因为当前线程要一直等到下一个RunLoop周期执行指定方法，所以下面这两个方法提供了一个与当前正在执行的代码相比最小的自动延迟
+  >
+  > 当有多个排队方法时，按照排队的顺序依次执行
+
+```swift
+func perform(_ aSelector: Selector, with anArgument: Any?, afterDelay delay: TimeInterval, inModes modes: [RunLoop.Mode])
+
+func perform(_ aSelector: Selector, with anArgument: Any?, afterDelay delay: TimeInterval)
+```
+
+- 取消上面两个等待在下一个RunLoop周期运行的方法执行
+
+```swift
+class func cancelPreviousPerformRequests(withTarget aTarget: Any, selector aSelector: Selector, object anArgument: Any?)
+
+class func cancelPreviousPerformRequests(withTarget aTarget: Any)
+```
+
+### Timer Sources
+
+计时器源用于在将来预定的时间将事件同步传递到线程执行。计时器是线程通知自己执行某个操作的方式
+
+计时器不是实时的，且计时器必须在RunLoop的特定模式下才能运行。如果RunLoop没有运行，计时器也不会触发
+
+计时器可以配置为仅一次或重复生成事件。重复计时器会根据计划的触发时间（而不是实际的触发时间）自动重新计划自己的时间。例如，如果计划将计时器在特定时间触发，并且此后每5秒钟触发一次，则即使实际触发时间被延迟，计划的触发时间也将始终落在原始的5秒时间间隔上。如果触发时间延迟得太多，以致错过了一个或多个计划的触发时间，则计时器将在错过的时间段内仅触发一次。在错过了一段时间后触发后，计时器将重新安排为下一个计划的触发时间
+
+### RunLoop Sequence Events
+
+在每一次的RunLoop循环中，线程都会处理一些待处理的事件，并向已经添加的观察者发出通知，通知的顺序如下：
+
+1. 通知观察者进入RunLoop循环
+2. 通知观察者准备就绪的计时器即将触发
+3. 通知观察者非基于端口的输入源即将触发
+4. 触发所有准备触发的非基于端口的输入源
+5. 如果一个基于端口的输入源已经准备好且等待启动，就需要立即启动，转到步骤9
+6. 通知观察者线程即将进入睡眠状态
+7. 线程进入睡眠状态，直到发生下列事件之一：
+   - 接收到基于端口的输入源事件
+   - 定时器启动
+   - 为RunLoop设置的超时时间到期
+   - RunLoop被显示唤醒
+8. 通知观察者线程刚刚醒来
+9. 处理已经添加的事件：
+   - 如果触发了用户定义的定时器，处理定时器事件并重新启动循环，转到步骤2
+   - 如果触发了输入源，传递事件
+   - 如果RunLoop被显示唤醒且还没有到超时时间，重新启动循环，转到步骤2
+10. 通知观察者RunLoop循环结束
+
+
+
