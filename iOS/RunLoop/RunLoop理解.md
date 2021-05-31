@@ -100,11 +100,19 @@ CoreFundation是开源的，所以可以分析[源码](https://opensource.apple.
 
 基于端口相关功能的输入源。在Cocoa中，不需要直接创建输入源，只要创建一个端口对象，将端口对象添加到RunLoop中即可。在CoreFoundation中，需手动创建端口及输入源，使用`CFMachPortRef`，`CFMessagePortRef`或`CFSocketRef`来创建适当的对象
 
-### Custom Input Sources
+### 自定义输入源
 
 自定义输入源，使用CoreFoundation框架下CFRunLoopSourceRef类型来创建。可以使用多个回调函数配置自自定义输入源。当要从RunLoop中删除源时，CoreFoundation会在不同点调用这些函数以配置源，处理所有传入事件，最后移除源
 
 除了定义事件到达时自定义源的行为外，还必须定义事件传递机制。这部分的代码需在单独的线程上运行，负责为输入源提供其数据，并在准备好处理数据时向其发出信号
+
+#### 创建
+
+创建自定义输入源涉及定义以下内容：
+
+- 输入源处理内容
+
+  
 
 ### Cocoa Perform Selector Sources
 
@@ -186,5 +194,121 @@ class func cancelPreviousPerformRequests(withTarget aTarget: Any)
    - 如果RunLoop被显示唤醒且还没有到超时时间，重新启动循环，转到步骤2
 10. 通知观察者RunLoop循环结束
 
+计时器和输入源的观察者通知是在事件实际发生之前传递的，因此通知时间和事件实际事件可能会有差距，一种好的处理方法是：使用睡眠和从睡眠中唤醒通知来关联实际事件之间的事件间隔
 
+可以显式唤醒RunLoop循环。其他事件也可能导致运行循环被唤醒。例如，添加另一个非基于端口的输入源会唤醒运行循环，以便可以立即处理输入源，而不是等到发生其他事件为止
 
+## 何时使用RunLoop
+
+在主线程中，RunLoop是随程序一同启动的，不需要显示调用
+
+对于辅助线程，需要判断是否需要RunLoop，如果需要，手动启动。不需要在所有情况下都启动辅助线程的RunLoop，通常，当希望与线程进行更多交互时，可以启动RunLoop
+
+使用端口或自定义输入源与其他线程进行通信时，需要启动RunLoop。如：
+
+- 使用定时器
+- 保持线程执行周期性任务
+- performSelector方法等
+
+当开启辅助线程RunLoop时，在适当的情况下，应该退出RunLoop
+
+## 使用RunLoop
+
+RunLoop对象提供了用于将输入源，计时器和RunLoop观察器添加到运行循环然后运行它的接口。 每个线程都有一个与之关联的RunLoop对象。 在 Cocoa 中，这个对象是 NSRunLoop 类的一个实例。 在底层中，它是一个指向 CFRunLoopRef类型的指针
+
+### 获取RunLoop对象
+
+```swift
+// cocoa
+let runLoop = RunLoop.current
+// cf
+let cfRunLoop = CFRunLoopGetCurrent()
+// RunLoop->CFRunLoop
+// runLoop和cfRunLoop都引用同一个运行循环
+runLoop.getCFRunLoop()
+```
+
+### RunLoop配置
+
+在辅助线程上开启RunLoop时，必须向其添加至少一个输入源或定时器，否则RunLoop没有监控到任务源，它会在尝试开启时立刻退出
+
+除了添加输入源，还可以添加RunLoop观察者来监控RunLoop的不同执行阶段，在Cocoa程序中，也必须使用CoreFoundation框架来添加RunLoop监控
+
+```swift
+let runLoop = RunLoop.current
+let cfRunLoop = runLoop.getCFRunLoop()
+let runLoopObserverHandle:(CFRunLoopObserver?, CFRunLoopActivity)->Void = { (cf, ac) in
+    if ac == .entry {
+        print("进入 runloop")
+    }
+    else if ac == .beforeTimers {
+        print("即将处理timer事件")
+    }
+    else if ac == .beforeWaiting {
+        print("runloop即将休眠")
+    }
+    else if ac == .afterWaiting {
+        print("runloop被唤醒")
+    }
+    else if ac == .exit {
+        print("退出runloop")
+    }
+}
+let observer = CFRunLoopObserverCreateWithHandler(kCFAllocatorDefault,CFRunLoopActivity.allActivities.rawValue, true, 0, runLoopObserverHandle)
+CFRunLoopAddObserver(cfRunLoop, observer, .defaultMode)
+let timer = Timer.scheduledTimer(timeInterval: 1, target: WeakProxy.init(target: self), selector: #selector(fireTimer), userInfo: nil, repeats: true)
+```
+
+### 开始RunLoop
+
+辅助线程才需要手动启动RunLoop，包括以下几种方式：
+
+- 无条件：此方式下，线程将置于永久循环，无法控制RunLoop本身。可以添加和删除输入源和计时器，但停止循环的唯一方法就是终止它，也不能在自定义模式下运行RunLoop
+
+```swift
+func run()
+```
+
+- 有时间限制：使用超时配置，RunLoop直到事件到达和超时时间到期之前都会一直运行。如果事件到达，则将该事件分配给线程进行处理，然后RunLoop退出，此后代码可以重新启动一个循环来处理下一个事件。如果超时时间到期，可以重新启动RunLoop。
+
+```swift
+// 运行RunLoop直到指定日期，在此期间它处理来自所有附加输入源的事件
+func run(until limitDate: Date)
+```
+
+- 特定模式：可以使用特定模式运行RunLoop。模式和超时时间不是互斥的，特定模式可以在启动RunLoop是使用。特定模式限定了RunLoop中事件传递的源类型
+
+```swift
+// 运行一次循环，阻止在指定模式下输入源直到指定日期
+// 如果RunLoop运行并处理了输入源或达到了指定的超时值，则为 true
+// 否则，如果无法启动运行循环，则为 false。
+func run(mode: RunLoop.Mode, before limitDate: Date) -> Bool
+func perform(inModes modes: [RunLoop.Mode], block: @escaping () -> Void)
+```
+
+### 退出RunLoop
+
+有两种方法可以在线程处理事件之前退出RunLoop：
+
+- 使用超时时间：在RunLoop推出之前完成所有正常处理，包括向观察者发送通知
+
+```swift
+// 运行RunLoop直到指定日期，在此期间它处理来自所有附加输入源的事件
+func run(until limitDate: Date)
+```
+
+- 手动停止：手动停止RunLoop会产生类似超时的效果，不同在于可以在无条件启动的RunLoop上使用此命令
+
+```swift
+func CFRunLoopStop(_ rl: CFRunLoop!)
+```
+
+> 移除输入源和Timer也可能退出RunLoop，但应该避免使用这种方式，因为系统可能会添加其他源处理所需事件，导致不能退出
+
+### 线程安全
+
+线程安全取决于用于操作运行循环的 API
+
+Core Foundation中的函数通常是线程安全的，可以从任何线程调用。 但是，如果正在执行更改RunLoop配置的操作，尽可能从拥有RunLoop的线程，然后执行配置操作
+
+Cocoa RunLoop类在本质上不如Core Foundation类线程安全。如果要修改某个线程的RunLoop，就应该先持有这个线程。并且将输入源或计时器添加到属于不同线程的RunLoop可能会发生异常
