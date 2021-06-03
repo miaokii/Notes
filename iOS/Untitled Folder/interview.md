@@ -18,7 +18,7 @@ isa指针是用来维护实例对象和类对象之间的关系，确保实例�
 
 shiftcls就是保存对象指向类的信息，通过位运算得到类对象
 
-![isa](../../Assets/runtime/isa.png)
+![isa](../../.Assets/runtime/isa.png)
 
 1. Root class(class)就是NSObject，它没有父类，所以NSObject的superclass指向nil
 2. 每个Class都有一个isa指针指向唯一的Mate class
@@ -45,7 +45,7 @@ class_rw_t是在运行时生成的，在编译期间，class_ro_t结构体就已
 
 两个结构体的成员变量有很多相同的地方，他们都存放着当前类的属性、实例变量、方法、协议等等。区别在于：class_ro_t存放的是编译期间就确定的；而class_rw_t是在runtime时才确定，它会先将class_ro_t的内容拷贝过去，然后再将当前类的分类的这些属性、方法等拷贝到其中。所以可以说class_rw_t是class_ro_t的超集，当然实际访问类的方法、属性等也都是访问的class_rw_t中的内容
 
-<img src="../../Assets/runtime/runtime 结构.png" alt="runtime 结构" style="zoom: 50%;" />
+<img src="../../.Assets/runtime/runtime 结构.png" alt="runtime 结构" style="zoom: 50%;" />
 
 ### 4. Runtime方法缓存的存储形式、数据结构和查找过程
 
@@ -195,3 +195,7 @@ super是一个编译器标识符，和self是同一个消息接收者。不同�
 - 处于线程安全的考虑，通过let设置的属性，真正意义上的达到了不变，由此解决了多线程中内存的访问和操作顺序问题
 
   
+
+技术栈：
+
+iOS：OC、swift、JSBridge、flutter兴趣小组、腾讯SDK

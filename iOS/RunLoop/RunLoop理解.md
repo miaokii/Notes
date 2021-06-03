@@ -59,7 +59,7 @@ int main(int argc, char * argv[]) {
 
 运行程序时，发现只打印了`application start`，结合官方文档中`UIApplicationMain`的说明，UIApplicationMain设置了主事件循环（包括应用程序的运行循环），并开始处理事件，所以UIApplicationMain不会返回，以此保证程序一直运行
 
-![runloop](../../Assets/runloop/runloop.jpg)
+![runloop](../../.Assets/runloop/runloop.jpg)
 
 上图是Apple官方的RunLoop运行模型，由模型可知，RunLoop就是一个事件循环，再循环过程中不断检测输入源和定时器源来接收这些源的事件，然后通知线程进行事件处理，当没有源输入事件时，线程就休息等待，避免占用cpu资源
 

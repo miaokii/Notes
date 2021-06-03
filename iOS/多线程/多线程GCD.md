@@ -8,11 +8,11 @@ swift/Objective-C -> C/C++ -> 汇编 -> 机器码
 
 所以，一个CPU执行的CPU命令列为一条无分叉的路径 就是线程
 
-<img src="../../Assets/gcd/单条无分叉CPU命令列.png" alt="单条无分叉CPU命令列.png" style="zoom:50%;" />
+<img src="../../.Assets/gcd/单条无分叉CPU命令列.png" alt="单条无分叉CPU命令列.png" style="zoom:50%;" />
 
 现在的多核CPU中，实际上有不止一个CPU核心，如果将一个CPU核心虚拟为两个CPU核心工作，虚拟后每个核心`执行CPU命令列仍是一条无岔路的路径`的规则不变，此时无岔路的路径不止一条，同时存在多条就是多线程。在多线程中，每个CPU核心执行多条不同路径上的不同命令
 
-<img src="../../Assets/gcd/多线程中执行CPU命令列.png" alt="多线程中执行CPU命令列.png" style="zoom:50%;" />
+<img src="../../.Assets/gcd/多线程中执行CPU命令列.png" alt="多线程中执行CPU命令列.png" style="zoom:50%;" />
 
 ## 任务和队列
 

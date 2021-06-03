@@ -321,7 +321,7 @@ URLSessionTask是所有任务的父类，其中定义了操作任务的基本方
 
 任务之间的继承结构如下：
 
-![tasks.png](../../Assets/urlsession/tasks.png)
+![tasks.png](../../.Assets/urlsession/tasks.png)
 
 ### 方法和属性
 
