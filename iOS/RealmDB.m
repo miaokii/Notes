@@ -117,13 +117,33 @@ static RealmDB * shareRealmDBObject = nil;
 }
 
 // MARK: - 增加
-+ (void)addObject:(RLMObject *)object {
++ (void)addObject:(RLMObject *)object error:(NSError * _Nullable __autoreleasing *)error complete:(RealmDBCallBack)complete {
+    [self addObjects:@[object] error:error complete:complete];
+}
+
++ (void)addObjects:(NSArray <RLMObject *> *)objects error:(NSError * _Nullable *)error complete:(RealmDBCallBack)complete {
+    
     if (!shareDb.realm) {
         return;
     }
     
+    [shareDb.realm transactionWithBlock:^{
+        [shareDb.realm addOrUpdateObjects:objects];
+        complete();
+    } error:error];
 }
 
+// MARK: - 删除
+// http://www.cocoachina.com/articles/26443
++ (void)deleteAllObjectFromObjectType:(id)objectType {
+    if (!shareDb.realm) {
+        return;
+    }
+    RLMResults * results = [objectType allObjects];
+    [shareDb.realm transactionWithBlock:^{
+        [shareDb.realm deleteObjects:results];
+    }];
+}
 
 // MARK: - Getter
 - (NSString *)dbPath {
@@ -143,5 +163,6 @@ static RealmDB * shareRealmDBObject = nil;
     }
     return _dbPath;
 }
+
 
 @end

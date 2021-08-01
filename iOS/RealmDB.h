@@ -10,6 +10,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+typedef void(^RealmDBCallBack)(void);
 @interface RealmDB : NSObject
 
 + (instancetype)shareInstance;
@@ -27,8 +28,23 @@ NS_ASSUME_NONNULL_BEGIN
 /// 删除所有数据库
 + (BOOL)deleteAllDB;
 
-// MARK: - 增加
-+ (void)addObject:(RLMObject *)object;
+// MARK: - 增
+
+/// 增加或更新一个对象
+/// @param object 数据对象
++ (void)addObject:(RLMObject *)object error:(NSError * _Nullable *)error complete:(RealmDBCallBack)complete;
+
+/// 增加或更新多个数据对象
+/// @param objects 数据对象集合
++ (void)addObjects:(NSArray <RLMObject *> *)objects error:(NSError * _Nullable *)error complete:(RealmDBCallBack)complete;
+
+// MARK: - 删
+
++ (void)deleteObject:(RLMObject *)object error:(NSError * _Nullable *)error complete:(RealmDBCallBack)complete;
+
++ (void)deleteObjects:(NSArray <RLMObject *> *)objects error:(NSError * _Nullable *)error complete:(RealmDBCallBack)complete;
+
++ (void)deleteAllObjectFromObjectType:(id)objectType;
 
 @end
 
