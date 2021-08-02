@@ -11,6 +11,7 @@
 NS_ASSUME_NONNULL_BEGIN
 
 typedef void(^RealmDBCallBack)(void);
+/// <#Description#>
 @interface RealmDB : NSObject
 
 + (instancetype)shareInstance;
@@ -40,11 +41,39 @@ typedef void(^RealmDBCallBack)(void);
 
 // MARK: - 删
 
+/// 删除一个对象
+/// @param object 删除的对象
+/// @param error 错误信息
+/// @param complete 删除成功的回调
 + (void)deleteObject:(RLMObject *)object error:(NSError * _Nullable *)error complete:(RealmDBCallBack)complete;
 
+/// 删除多个对象
+/// @param objects 删除的对象
+/// @param error 错误信息
+/// @param complete 删除成功的回调
 + (void)deleteObjects:(NSArray <RLMObject *> *)objects error:(NSError * _Nullable *)error complete:(RealmDBCallBack)complete;
 
-+ (void)deleteAllObjectFromObjectType:(id)objectType;
+/// 删除某个表的所有记录
+/// @param objectType 表类型
++ (void)deleteAllObjectFromObjectType:(id)objectType complete:(RealmDBCallBack)complete;
+
+// MARK: - 改
+
+/// 更改一个对象
+/// @param object 对象
++ (void)updateObejct:(RLMObject *)object;
+
+/// 更改多个对象
+/// @param objects 对象
++ (void)updateObejcts:(NSArray <RLMObject *> *)objects;
+
+/// 更新操作
++ (void)updateWithTranstionAction:(void(^)(BOOL))action;
+
+/// 更新一个个对象的多个属性值，
+/// @param object 对象
+/// @param value 更新类型
++ (void)updateObejctAttributes:(RLMObject *)object value:(id)value;
 
 @end
 
